@@ -1,42 +1,63 @@
 pipeline {
     agent any
 
+    environment {
+        VENV = ".venv"
+    }
+
     stages {
+
         stage('Check Environment') {
             steps {
                 sh '''
+                    echo "User: $(whoami)"
                     python3 --version
-                    robot --version
                 '''
             }
         }
 
-        stage('Start AMF & SMF') {
+        stage('Setup Python Virtualenv') {
             steps {
                 sh '''
-                    nohup python3 api/amf_api.py &
-                    nohup python3 api/smf_api.py &
-                    sleep 3
+                    python3 -m venv ${VENV}
+                    . ${VENV}/bin/activate
+                    pip install --upgrade pip
+                    pip install -r requirements.txt
+                '''
+            }
+        }
+
+        stage('Start AMF & SMF APIs') {
+            steps {
+                sh '''
+                    . ${VENV}/bin/activate
+                    nohup python3 api/amf_api.py > amf.log 2>&1 &
+                    nohup python3 api/smf_api.py > smf.log 2>&1 &
+                    sleep 5
                 '''
             }
         }
 
         stage('Run Robot CNF Tests') {
             steps {
-                sh 'robot robot/'
+                sh '''
+                    . ${VENV}/bin/activate
+                    robot robot/
+                '''
             }
         }
     }
 
     post {
         always {
-            archiveArtifacts artifacts: '*.html,*.xml', fingerprint: true
+            archiveArtifacts artifacts: '*.log, output.xml, log.html, report.html', allowEmptyArchive: true
         }
         success {
-            echo "✅ CNF API Tests PASSED"
+            echo "✅ CNF AMF/SMF API Tests PASSED"
         }
         failure {
-            echo "❌ CNF API Tests FAILED"
+            echo "❌ CNF AMF/SMF API Tests FAILED"
         }
     }
 }
+
