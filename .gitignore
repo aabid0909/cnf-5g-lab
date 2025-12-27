@@ -1,0 +1,15 @@
+# Robot Framework outputs
+output.xml
+log.html
+report.html
+*.log
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Jenkins workspace
+jenkins/
+
+# OS files
+.DS_Store
